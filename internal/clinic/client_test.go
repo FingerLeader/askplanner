@@ -35,6 +35,28 @@ func TestBuildWhereClauseIncludesPartitionsAndFilters(t *testing.T) {
 	}
 }
 
+func TestSlowQuerySQLUsesUnquotedTableName(t *testing.T) {
+	spec := LinkSpec{
+		ClusterID: "123",
+		StartTime: time.Date(2026, 3, 20, 23, 0, 0, 0, time.UTC),
+		EndTime:   time.Date(2026, 3, 21, 1, 0, 0, 0, time.UTC),
+	}
+
+	sqls := []string{
+		buildSummarySQL(spec),
+		buildDetailRowsSQL(spec),
+		buildTopDigestsSQL(spec),
+	}
+	for _, sql := range sqls {
+		if !strings.Contains(sql, "FROM clinic_data_proxy.slow_query_logs") {
+			t.Fatalf("expected unquoted table name in SQL: %s", sql)
+		}
+		if strings.Contains(sql, `"clinic_data_proxy"."slow_query_logs"`) {
+			t.Fatalf("expected quoted table name to be removed: %s", sql)
+		}
+	}
+}
+
 func TestFetchSlowQueryContext(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch {
